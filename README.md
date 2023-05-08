@@ -1,18 +1,18 @@
 # macOS User Defaults (`user-defaults`)
-Wrapper for macOS defaults, designed for running with admin privileges to read/write the defaults of another user.
+Wrapper for macOS defaults, designed for running with admin privileges to read/write the defaults of another user while properly handling permissions and reloading of defaults to reflect and apply any changes.
 
 ## Usage
 
-Usage remains the same as the native macOS defaults command, with the following additional flags:
+Usage remains the same as the native macOS defaults command, with the following additional flags, which may be used with a single or double dash:
 
-| Flag       | Description                                                                                          |
-|------------|------------------------------------------------------------------------------------------------------|
-| `-user`    | The user to read/write the preferences with.                                                         |
-| `-quiet`   | Does not show error output or confirmations. In the case of a read command, only the value is shown. |
-| `-force`   | When writing, will ignore the existence of a Managed Preference and write the value anyway.          |
-| `-version` | Displays the version                                                                                 |
+| Flag      | Description                                                                                          |
+|-----------|------------------------------------------------------------------------------------------------------|
+| `user`    | The user to read/write the preferences with.                                                         |
+| `quiet`   | Does not show error output or confirmations. In the case of a read command, only the value is shown. |
+| `force`   | When writing, will ignore the existence of a Managed Preference and write the value anyway.          |
+| `version` | Displays the version                                                                                 |
 
-When using the `-user` flag, written preferences are stored in the user's library unless the domain specified is an absolute path.
+When using the `user` flag, written preferences are stored in the user's library unless the domain specified is an absolute path.
 
 ## Additional Conveniences
 
