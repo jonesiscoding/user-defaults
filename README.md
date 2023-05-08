@@ -27,5 +27,6 @@ When using the `-user` flag, written preferences are stored in the user's librar
 ## Optional Installer Script
 If your script is running as root, you can silently install the library using the 1-liner below:
 
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jonesiscoding/user-defaults/HEAD/bin/install.sh)" || exit 1
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jonesiscoding/user-defaults/HEAD/bin/install.sh)" || exit 1
+
 The installer will check this repo for the most recent release, then if needed, download & install to `/usr/local/sbin/user-defaults`.
