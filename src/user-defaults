@@ -4,7 +4,7 @@
 
 binDefaults="/usr/bin/defaults"
 binReload="/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings"
-version="1.0"
+version="1.0.1"
 
 ## endregion ########################################### End Static Variables
 
@@ -118,10 +118,12 @@ done
 prefix="sudo -u $targetUser"
 action="${args[0]}"
 
+# Determine if this will write
+if echo "$action" | grep -q 'write\|array\|array-add\|dict\|dict-add'; then
+  isWrite=true
+fi
+
 if [ "$action" == "write" ] && $isSingle; then
-  # Get Particulars
-  domain="${args[1]}"
-  key="${args[2]}"
   if $isType; then
     type="${args[3]}"
     value="${args[4]}"
@@ -159,23 +161,22 @@ done
 
 # Output if Applicable
 if $isQuiet; then
-  if $commandStr /dev/null 2>&1; then
-    if echo "$action" | grep -q 'write\|array\|array-add\|dict\|dict-add'; then
-      $prefix $binReload -u
-    fi
-
-    exit 0
-  fi
-else
-  if $commandStr; then
-    if echo "$action" | grep -q 'write\|array\|array-add\|dict\|dict-add'; then
-      $prefix $binReload -u
-    fi
-
-    exit 0
+  if $isWrite; then
+    $commandStr /dev/null 2>&1
   else
-    exit $?
+    $commandStr 2> /dev/null
   fi
+  exitCode=$?
+else
+  $commandStr
+  exitCode=$?
 fi
+
+if [ "$exitCode" -eq "0" ] && $isWrite && [ -f "$binReload" ]; then
+  # Reload preferences
+  $prefix $binReload -u
+fi
+
+exit "$exitCode"
 
 ## endregion ########################################### End Main Code
