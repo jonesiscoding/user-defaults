@@ -90,6 +90,8 @@ fi
 
 isQuiet=false
 isType=false
+isWrite=false
+isForce=false
 args=()
 while [ "$1" != "" ]; do
   # See if user specified a type
@@ -102,6 +104,7 @@ while [ "$1" != "" ]; do
   case "$1" in
       -u | -user | --user )       targetUser="$2";             shift;;
       -q | -quiet | --quiet )     isQuiet=true;                ;;
+      -f | -force | --force )     isForce=true;                ;;
       -currentHost )              host="current";              ;;
       -host )                     host="$2";                   shift;;
       -h | --help | help )        output::usage;               exit;; # quit and show usage
@@ -115,12 +118,45 @@ done
 
 ## region ############################################## Main Code
 
+# Get Particulars
 prefix="sudo -u $targetUser"
 action="${args[0]}"
+domain="${args[1]}"
+key="${args[2]}"
 
 # Determine if this will write
 if echo "$action" | grep -q 'write\|array\|array-add\|dict\|dict-add'; then
   isWrite=true
+  # Warn about trying to overwrite Managed Preferences
+  if ! echo "$domain" | /usr/bin/grep -q "/"; then
+    managedPath="/Library/Managed Preferences/${domain}"
+    if ! echo "$domain" | /usr/bin/grep ".plist"; then
+      managedPath="${managedPath}.plist"
+    fi
+
+    if [ -f "$managedPath" ]; then
+      # Attempt to read for same key
+      testCommand="$binDefaults read "
+      [ -n "$host" ] && testCommand="$testCommand $host "
+      output=$($testCommand "$managedPath"  2>&1)
+      retval=$?
+      absent=$(echo "$output" | /usr/bin/grep "does not exist")
+      if [ -z "$absent" ]; then
+        # If we didn't get a "does not exist" error, issue a warning.
+        if ! $isQuiet; then
+          {
+            echo "$output" | head -n 1
+            echo "The domain/default pair of ($domain, $key) is a Managed Preference and cannot be modified."
+          } >&2
+        fi
+
+        if ! $isForce; then
+          # Exit instead of attempting to write
+          exit "$retval"
+        fi
+      fi
+    fi
+  fi
 fi
 
 if [ "$action" == "write" ] && $isSingle; then
