@@ -4,7 +4,7 @@
 
 binDefaults="/usr/bin/defaults"
 binReload="/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings"
-version="1.0.1"
+version="1.1"
 
 ## endregion ########################################### End Static Variables
 
