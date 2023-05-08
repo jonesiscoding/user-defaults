@@ -1,0 +1,182 @@
+#!/bin/bash
+
+## region ############################################## Static Variables
+
+binDefaults="/usr/bin/defaults"
+binReload="/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings"
+version="1.0"
+
+## endregion ########################################### End Static Variables
+
+## region ############################################## Functions
+
+function normalizeValue() {
+  local val
+
+  val=$1
+
+  case "$val" in
+    1 | yes | TRUE | True | true ) val="-bool true" ;;
+    0 | no | FALSE | False | false ) val="-bool false" ;;
+  esac
+
+  echo "$val" && return 0
+}
+
+function output::usage() {
+  local help
+  help=$(defaults help)
+  echo "$help" | tail -n + 1 | head -n 2
+  echo "Command line interface to a specific user's defaults. Automatically refreshes defaults after writing."
+  echo "Syntax:"
+  echo ""
+  echo "'defaults-user' -version             Displays the version number"
+  echo "'defaults-user' -help                Displays this help"
+  echo "'defaults-user' [ -currentHost | -host <hostname> ] [ -user <username> ] [ -quiet ] followed by one of the following:"
+  echo ""
+  echo "$help" | tail -n +6 | head -n 22
+  echo "<user> is a valid macOS user. If not specified, the currently logged in console user will be used."
+  echo "       Exits with an error if no user is specified and no user is logged in."
+  echo ""
+  echo "$help" | tail -n +28
+  echo ""
+  echo "If no value type is specified, the -bool flag is automatically added for boolean-like values."
+  echo ""
+}
+
+function output::version() {
+  echo "user-defaults v${version}"
+}
+
+# /*!
+#   Public: Shows the username of the current console user, if any is logged in.
+# */
+function user::console() {
+  echo "show State:/Users/ConsoleUser" | /usr/sbin/scutil | /usr/bin/awk '/Name :/ && ! /loginwindow/ { print $3 }'
+}
+
+
+function _isJamf() {
+  local cName firstCharFirstArg
+  cName=$(/usr/sbin/scutil --get ComputerName)
+  firstCharFirstArg=$(/usr/bin/printf '%s' "$1" | /usr/bin/cut -c 1)
+  if [ "$firstCharFirstArg" == "/" ] && [ "$2" == "$cName" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+## endregion ########################################### End Functions
+
+## region ############################################## Jamf Detection & Argument Shifting
+
+if _isJamf "$@"; then
+  # shellcheck disable=SC2034
+  jamfMountPoint="$1"
+  # shellcheck disable=SC2034
+  jamfHostName="$2"
+  # shellcheck disable=SC2034
+  jamfUser="$3"
+  targetUser="$jamfUser"
+  # Remove Jamf Arguments
+  shift 3
+  # Blank first Output Line for Prettier Jamf Logs
+  echo ""
+fi
+
+## endregion ########################################### End Jamf Detection and Arg Shifting
+
+## region ############################################## Argument Handling
+
+isQuiet=false
+isType=false
+args=()
+while [ "$1" != "" ]; do
+  # See if user specified a type
+  case "$1" in
+    -string | -data | -int | -integer | -float | -bool | -boolean | -date ) isType=true; isSingle=true ;;
+    -array | -array-add | -dict | -dict-add ) isType=true; isSingle=false ;;
+  esac
+
+  # Check for our added flags
+  case "$1" in
+      -u | -user | --user )       targetUser="$2";             shift;;
+      -q | -quiet | --quiet )     isQuiet=true;                ;;
+      -currentHost )              host="current";              ;;
+      -host )                     host="$2";                   shift;;
+      -h | --help | help )        output::usage;               exit;; # quit and show usage
+      --version )                 output::version;             exit;; # quit and show usage
+      * )                         args+=("$1")                 # if no match, add it to the positional args
+  esac
+  shift # move to next kv pair
+done
+
+## endregion ########################################### End Argument Handling
+
+## region ############################################## Main Code
+
+prefix="sudo -u $targetUser"
+action="${args[0]}"
+
+if [ "$action" == "write" ] && $isSingle; then
+  # Get Particulars
+  domain="${args[1]}"
+  key="${args[2]}"
+  if $isType; then
+    type="${args[3]}"
+    value="${args[4]}"
+  else
+    type=""
+    value=$(normalizeValue "${args[3]}")
+  fi
+
+  # Normalize Domain
+  if [ "$domain" == ".GlobalPreferences" ]; then
+    domain="-g"
+  fi
+
+  command=("$prefix" "$binDefaults" "write" "$host" "$domain" "$key" "$type" "$value")
+else
+  # Here we are just prefixing
+  command=("$prefix" "$binDefaults" "$host")
+  for arg in "${args[@]}"
+  do
+     command+=("$arg")
+  done
+fi
+
+# Build the normalized command
+commandStr=""
+for part in "${command[@]}"; do
+  if [ -n "$part" ]; then
+    if [ -n "$commandStr" ]; then
+      commandStr="$commandStr $part"
+    else
+      commandStr="$part"
+    fi
+  fi
+done
+
+# Output if Applicable
+if $isQuiet; then
+  if $commandStr /dev/null 2>&1; then
+    if echo "$action" | grep -q 'write\|array\|array-add\|dict\|dict-add'; then
+      $prefix $binReload -u
+    fi
+
+    exit 0
+  fi
+else
+  if $commandStr; then
+    if echo "$action" | grep -q 'write\|array\|array-add\|dict\|dict-add'; then
+      $prefix $binReload -u
+    fi
+
+    exit 0
+  else
+    exit $?
+  fi
+fi
+
+## endregion ########################################### End Main Code
