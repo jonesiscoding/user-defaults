@@ -26,7 +26,6 @@ function normalizeValue() {
 function output::usage() {
   local help
   help=$(defaults help)
-  echo "$help" | tail -n + 1 | head -n 2
   echo "Command line interface to a specific user's defaults. Automatically refreshes defaults after writing."
   echo "Syntax:"
   echo ""
