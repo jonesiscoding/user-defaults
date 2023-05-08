@@ -31,7 +31,7 @@ function output::usage() {
   echo ""
   echo "'defaults-user' -version             Displays the version number"
   echo "'defaults-user' -help                Displays this help"
-  echo "'defaults-user' [ -currentHost | -host <hostname> ] [ -user <username> ] [ -quiet ] followed by one of the following:"
+  echo "'defaults-user' [ -currentHost | -host <hostname> ] [ -user <username> ] [ -quiet ] [ -force ] followed by one of the following:"
   echo ""
   echo "$help" | tail -n +6 | head -n 22
   echo "<user> is a valid macOS user. If not specified, the currently logged in console user will be used."
